@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Asignaciones</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <style type="text/tailwindcss">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-height: 100vh;
+            gap: 1rem;
+            transition: background 0.5s ease;
+            position: relative;
+        }
+
+        .header-container {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            align-self: center;
+        }
+        .main-header {
+            font-size: 1.5rem;
+            color: #4B5563;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .glass-container {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            padding: 1rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .navigation-tabs {
+            @apply flex gap-0.5 mt-2 p-1 rounded-full;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            align-self: center;
+        }
+        .nav-button {
+            @apply flex items-center justify-center gap-2 px-4 py-2 rounded-full cursor-pointer text-gray-600 font-medium text-sm;
+            background-color: transparent;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .nav-button:hover {
+            color: #5850ec;
+        }
+        .active-nav {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .section-hab-doble { border: 2px solid #1DA1F2; }
+        .section-hab-triple { border: 2px solid #2ECC71; }
+        .section-hab-cuadruple { border: 2px solid #E74C3C; }
+
+        :root {
+          --available-color: #E5E7EB;
+          --occupied-color: #3B82F6;
+          --text-secondary-color: #6B7280;
+          --border-color: rgba(255, 255, 255, 0.2);
+          --drag-color: #FBBF24;
+        }
+        .seat-wrapper {
+            @apply relative flex items-center p-0.5 bg-white shadow-sm transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md;
+            border-radius: 8px;
+            width: 100%;
+            min-height: 50px;
+            box-sizing: border-box;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+        }
+        .seat {
+            @apply flex items-center justify-center rounded-lg cursor-pointer text-white font-extrabold p-0.5 w-7 h-7 shrink-0 shadow-md transition-all duration-150 ease-in-out;
+            font-size: 0.75rem;
+        }
+        .seat-available { @apply bg-[var(--available-color)] text-gray-700 hover:bg-gray-300; }
+        .seat-occupied { @apply bg-[var(--occupied-color)]; }
+        .dragging-source {
+            @apply opacity-40 border-dashed border-2 border-[var(--drag-color)] scale-95;
+        }
+        .dragging-item {
+            @apply scale-105 shadow-xl ring-4 ring-offset-2 ring-[var(--drag-color)];
+            cursor: grabbing;
+            z-index: 9999;
+            position: absolute;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .seat-payment-indicator {
+            @apply absolute top-0 right-0 size-2.5 rounded-full -mt-1 -mr-1 border-2 border-white;
+        }
+        .seat-payment-indicator-paid { background: linear-gradient(135deg, #10B981 0%, #047857 100%); }
+        .seat-payment-indicator-deposit { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); }
+        .seat-payment-indicator-unpaid { background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); }
+        .seat-info-frame {
+          @apply flex flex-col justify-center ml-1 flex-grow;
+        }
+        .passenger-name-frame {
+          @apply text-[var(--text-secondary-color)] leading-tight block;
+          font-size: 0.6rem;
+        }
+        .driver-cabin {
+            @apply bg-gray-800 text-white font-bold text-center py-1.5 rounded-t-lg mb-1.5 text-xs shadow-md;
+            grid-column: 1 / -1;
+        }
+        .aisle-column {
+            @apply flex items-center justify-center w-full h-full;
+            overflow: hidden;
+        }
+        .aisle-line {
+             @apply w-0.5 h-full bg-slate-300/60 rounded-full;
+        }
+        .container-hab {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .section-hab {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+        }
+        .section-hab:hover {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        .section-title-hab {
+            color: #1c2526;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        .grid-hab {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+        .room, .add-room-card {
+            border: 1px solid #e1e8ed;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 0.5rem;
+            text-align: center;
+            min-height: 5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            position: relative;
+            box-sizing: border-box;
+            cursor: grab;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .room:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        .add-room-card {
+            border: 1px dashed #aab8c2;
+            background-color: #f5f8fa;
+            color: #657786;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .add-room-card:hover {
+            background-color: #e1e8ed;
+        }
+        .room.drag-over, .add-room-card.drag-over, .guest.drag-over {
+            border: 2px dashed #1da1f2;
+            background-color: #e6f7ff;
+        }
+        .guest.dragging {
+            opacity: 0.5;
+        }
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .room-number {
+            font-weight: bold;
+            color: #374151;
+            font-size: 1rem;
+        }
+        .room-menu {
+            position: relative;
+            z-index: 10;
+        }
+        .room-menu .material-icons {
+            font-size: 1rem;
+            color: #657786;
+            cursor: pointer;
+        }
+        .room-menu-dropdown {
+            @apply glass-container;
+            background: rgba(255, 255, 255, 0.95);
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: max-content;
+            padding: 0.5rem;
+            margin-top: 0.25rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+        }
+        .room-menu-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .room-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            color: #4B5563;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+            font-size: 0.875rem;
+        }
+        .room-menu-item:hover {
+            background-color: #f0f4f8;
+        }
+        .room-menu-item-delete {
+            color: #EF4444;
+        }
+        .guest-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            align-items: center;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .guest-chip {
+            color: #555555;
+            padding: 0.2rem 0.4rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            width: 100%;
+            text-align: left;
+            cursor: grab;
+            transition: all 0.2s ease-in-out;
+            background-color: #e9ecef;
+        }
+        .guest-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .guest-chip-doble { background-color: #E6F6FE; }
+        .guest-chip-triple { background-color: #E8F8EE; }
+        .guest-chip-cuadruple { background-color: #FEEEEE; }
+
+        .modal-overlay, .confirm-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show, .confirm-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content, .confirm-modal-content {
+            @apply glass-container;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 350px;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .modal-overlay.show .modal-content, .confirm-modal-overlay.show .confirm-modal-content {
+            transform: scale(1);
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            cursor: pointer;
+            color: #4B5563;
+        }
+        .modal-title, .confirm-modal-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+        }
+        .modal-info-item {
+            margin-bottom: 0.25rem;
+        }
+        .modal-info-label {
+            font-weight: bold;
+            color: #657786;
+            display: block;
+            font-size: 0.8rem;
+        }
+        .modal-info-value {
+            font-size: 1rem;
+            color: #1c2526;
+        }
+        .modal-actions, .confirm-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .modal-actions .btn, .confirm-modal-actions .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .modal-actions .btn-primary, .confirm-modal-actions .btn-primary {
+            background-color: #667eea;
+            color: #fff;
+        }
+        .modal-actions .btn-secondary, .confirm-modal-actions .btn-secondary {
+            background-color: #e5e7eb;
+            color: #4b5563;
+        }
+        .confirm-modal-message {
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+        .btn-delete {
+            background-color: #EF4444;
+            color: #fff;
+        }
+        .btn-edit {
+             background-color: #FBBF24;
+             color: #fff;
+        }
+        .assignment-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .assignment-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .assignment-modal-content {
+            @apply glass-container;
+            background: rgba(255, 255, 255, 0.9);
+            width: 90%;
+            max-width: 600px;
+            padding: 1.5rem;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .assignment-modal-overlay.show .assignment-modal-content {
+            transform: scale(1);
+        }
+        .assignment-modal-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .assignment-modal-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .assignment-list-section {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e1e8ed;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.2s ease;
+        }
+
+        .current-room-section-doble {
+             background-color: #e6f6fe;
+             border-color: #1DA1F2;
+        }
+        .current-room-section-triple {
+             background-color: #e8f8ee;
+             border-color: #2ECC71;
+        }
+        .current-room-section-cuadruple {
+             background-color: #feeeee;
+             border-color: #E74C3C;
+        }
+
+        .assignment-list-title {
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+        .assignment-guest-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 0.5rem;
+        }
+        .assignment-guest-item {
+            padding: 0.5rem 0.75rem;
+            background-color: #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+        }
+        .assignment-guest-item:hover {
+            background-color: #e6f7ff;
+            transform: translateY(-2px);
+        }
+        .assignment-guest-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #f1f5f9;
+        }
+        .add-room-icon {
+            font-size: 1.2rem;
+            margin-bottom: 0.1rem;
+        }
+        .pantallas {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 0.5rem;
+            overflow-y: auto;
+        }
+        .pantallas.active {
+            display: block;
+        }
+        hr {
+            border: 0;
+            height: 1px;
+            background-color: #e1e8ed;
+            width: 100%;
+            margin: 1rem 0;
+        }
+        #unassign-seat-zone {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            width: 90%;
+            max-width: 400px;
+            height: 80px;
+            background-color: #fff;
+            border: 2px dashed #EF4444;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #EF4444;
+            font-weight: 500;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        #unassign-seat-zone.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        #unassign-seat-zone.drag-over {
+            background-color: #FEE2E2;
+            transform: translateX(-50%) translateY(0) scale(1.05);
+        }
+        .unassigned-passengers-container, .waitlist-passengers-container {
+            @apply glass-container;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .unassigned-passengers-header, .waitlist-passengers-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .add-passenger-btn {
+            @apply flex items-center justify-center p-2 rounded-full text-white font-medium text-sm;
+            background-color: #667eea;
+            transition: all 0.3s ease;
+        }
+        .add-passenger-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .unassigned-passengers-grid, .waitlist-passengers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.5rem;
+        }
+        .unassigned-passenger-chip, .waitlist-passenger-chip {
+            @apply flex items-center justify-center p-2 bg-gray-100 rounded-lg text-gray-700 text-sm cursor-grab;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .unassigned-passenger-chip:hover, .waitlist-passenger-chip:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .waitlist-passenger-chip {
+            background-color: #FFFBEA;
+            border: 1px solid #FCD34D;
+        }
+        
+        .mic-button {
+            @apply fixed bottom-4 right-4 z-[9999] p-3 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700;
+            transition: all 0.3s ease;
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1 class="main-header">Gestión de Asignaciones</h1>
+    </div>
+    <div class="navigation-tabs">
+        <button class="nav-button active-nav" data-target="seat-map">
+            <span class="material-icons">event_seat</span>
+            <span>Asientos</span>
+        </button>
+        <button class="nav-button" data-target="rooms-map">
+            <span class="material-icons">bed</span>
+            <span>Habitaciones</span>
+        </button>
+    </div>
+
+    <hr>
+
+    <div id="seat-map" class="pantallas active">
+        <h2 class="text-lg font-semibold mb-1">Mapa de Asientos</h2>
+        <div id="seat-grid" class="grid gap-1.5 grid-cols-[auto,auto,8px,auto,auto]">
+            <div class="driver-cabin">Cabina del Conductor</div>
+        </div>
+
+        <div class="unassigned-passengers-container">
+            <div class="unassigned-passengers-header">
+                <h3 class="text-base font-semibold text-gray-700">Pasajeros sin Asiento</h3>
+                <button id="add-passenger-btn" class="add-passenger-btn">
+                    <span class="material-icons text-base">add</span>
+                </button>
+            </div>
+            <div id="unassignedPassengersGrid" class="unassigned-passengers-grid">
+                </div>
+        </div>
+        
+        <div class="waitlist-passengers-container">
+            <div class="waitlist-passengers-header">
+                <h3 class="text-base font-semibold text-gray-700">Pasajeros en Lista de Espera</h3>
+            </div>
+            <div id="waitlistPassengersGrid" class="waitlist-passengers-grid">
+                </div>
+        </div>
+    </div>
+
+    <div id="rooms-map" class="pantallas">
+        <div class="container-hab">
+            <h2 class="header-hab">Mapa de Habitaciones</h2>
+            <section class="section-hab section-hab-doble">
+                <h3 class="section-title-hab">Habitaciones Doble</h3>
+                <div class="grid-hab" id="doubleRoomsGrid">
+                </div>
+            </section>
+            <section class="section-hab section-hab-triple">
+                <h3 class="section-title-hab">Habitaciones Triple</h3>
+                <div class="grid-hab" id="tripleRoomsGrid">
+                </div>
+            </section>
+            <section class="section-hab section-hab-cuadruple">
+                <h3 class="section-title-hab">Habitaciones Cuádruple</h3>
+                <div class="grid-hab" id="quadrupleRoomsGrid">
+                </div>
+            </section>
+            <section class="section-hab">
+                <h3 class="section-title-hab">Huéspedes No Asignados</h3>
+                <div class="grid-hab" id="unassignedGuestsGrid">
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="passenger-details-modal">
+        <div class="modal-content">
+            <span class="material-icons modal-close-button">close</span>
+            <div id="passenger-info-view">
+                <h3 class="modal-title" id="modal-passenger-name"></h3>
+                <div class="modal-body">
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Estado de Pago:</span>
+                        <span class="modal-info-value" id="modal-payment-status"></span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Asiento:</span>
+                        <span class="modal-info-value" id="modal-seat-number"></span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Habitación:</span>
+                        <span class="modal-info-value" id="modal-room-number"></span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Tipo de Habitación:</span>
+                        <span class="modal-info-value" id="modal-room-type"></span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-delete" id="delete-passenger-btn">Eliminar</button>
+                    <button class="btn btn-secondary" id="edit-passenger-btn">Modificar</button>
+                </div>
+            </div>
+
+            <div id="passenger-edit-view" style="display: none;">
+                <h3 class="modal-title" id="edit-modal-title"></h3>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="modal-info-label">Nombre Completo:</label>
+                        <input type="text" id="edit-passenger-name" class="w-full mt-1 p-2 border rounded-md">
+                    </div>
+                    <div class="mb-4">
+                        <label class="modal-info-label">Estado de Pago:</label>
+                        <select id="edit-payment-status" class="w-full mt-1 p-2 border rounded-md">
+                            <option value="unpaid">Sin Pagar</option>
+                            <option value="deposit">Con Depósito</option>
+                            <option value="paid">Pagado</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="modal-info-label">Asiento:</label>
+                        <input type="number" id="edit-seat-number" class="w-full mt-1 p-2 border rounded-md" disabled>
+                    </div>
+                    <div class="mb-4">
+                        <label class="modal-info-label">Tipo de Habitación:</label>
+                        <select id="edit-room-type-select" class="w-full mt-1 p-2 border rounded-md">
+                            <option value="">Seleccione</option>
+                            <option value="Doble">Doble</option>
+                            <option value="Triple">Triple</option>
+                            <option value="Cuádruple">Cuádruple</option>
+                        </select>
+                    </div>
+                    <div class="mb-4" id="room-number-container" style="display: none;">
+                        <label class="modal-info-label">Número de Habitación:</label>
+                        <select id="edit-room-number-select" class="w-full mt-1 p-2 border rounded-md">
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancel-edit-btn">Cancelar</button>
+                    <button class="btn btn-primary" id="save-passenger-btn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="assignment-modal-overlay" id="room-assignment-modal">
+        <div class="assignment-modal-content">
+            <span class="material-icons modal-close-button" id="assignment-modal-close">close</span>
+            <h3 class="assignment-modal-title">Gestionar <span id="current-room-modal-title"></span></h3>
+            <div class="assignment-modal-body">
+                <div class="assignment-list-section" id="current-room-section">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="assignment-list-title">Huéspedes en esta Habitación</h4>
+                        <div class="room-capacity-info">
+                            <span class="font-bold" id="current-room-guests-count">0</span> / <span id="current-room-capacity">0</span>
+                        </div>
+                    </div>
+                    <ul class="assignment-guest-list" id="current-room-guests-list"></ul>
+                </div>
+                <div class="assignment-list-section">
+                    <h4 class="assignment-list-title">Huéspedes sin Asignar</h4>
+                    <ul class="assignment-guest-list" id="unassigned-guests-list"></ul>
+                </div>
+                <div class="assignment-list-section">
+                    <h4 class="assignment-list-title">Huéspedes en otras Habitaciones</h4>
+                    <ul class="assignment-guest-list" id="other-rooms-guests-list"></ul>
+                </div>
+            </div>
+            <div class="modal-actions justify-center mt-4">
+                <label for="room-type-select-modal" class="font-bold text-gray-700">Tipo de Habitación:</label>
+                <select id="room-type-select-modal" class="p-2 border rounded-md ml-2">
+                    <option value="Doble">Doble</option>
+                    <option value="Triple">Triple</option>
+                    <option value="Cuádruple">Cuádruple</option>
+                </select>
+                <button class="btn btn-primary ml-2" id="save-room-type-btn">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-room-modal">
+        <div class="modal-content">
+            <span class="material-icons modal-close-button" id="edit-room-modal-close">close</span>
+            <h3 class="modal-title">Editar Habitación</h3>
+            <div class="modal-body">
+                <p class="mb-2">Habitación: <span id="edit-room-number-display" class="font-bold"></span></p>
+                <div class="mb-4">
+                    <label class="modal-info-label">Tipo de Habitación:</label>
+                    <select id="edit-room-type-select-main" class="w-full mt-1 p-2 border rounded-md">
+                        <option value="Doble">Doble</option>
+                        <option value="Triple">Triple</option>
+                        <option value="Cuádruple">Cuádruple</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-edit-room-btn">Cancelar</button>
+                <button class="btn btn-primary" id="save-edit-room-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="confirm-modal-overlay" id="confirm-modal">
+        <div class="confirm-modal-content">
+            <h3 class="confirm-modal-title" id="confirm-modal-title"></h3>
+            <p class="confirm-modal-message" id="confirm-modal-message"></p>
+            <div class="confirm-modal-actions">
+                <button class="btn btn-secondary" id="confirm-cancel-btn">Cancelar</button>
+                <button class="btn btn-primary" id="confirm-ok-btn"></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="unassign-seat-zone">
+        <span class="material-icons">delete_forever</span>
+        <span class="ml-2">Arrastra aquí para desasignar</span>
+    </div>
+
+    <button id="mic-button" class="mic-button">
+        <span class="material-icons">mic</span>
+    </button>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navButtons = document.querySelectorAll('.nav-button');
+            const mapContainers = document.querySelectorAll('#seat-map, #rooms-map');
+            const passengerDetailsModal = document.getElementById('passenger-details-modal');
+            const modalCloseButton = passengerDetailsModal.querySelector('.modal-close-button');
+            const roomAssignmentModal = document.getElementById('room-assignment-modal');
+            const assignmentModalCloseButton = document.getElementById('assignment-modal-close');
+            const unassignSeatZone = document.getElementById('unassign-seat-zone');
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmOkBtn = document.getElementById('confirm-ok-btn');
+            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+            const editRoomModal = document.getElementById('edit-room-modal');
+            const editRoomModalCloseBtn = document.getElementById('edit-room-modal-close');
+            const saveEditRoomBtn = document.getElementById('save-edit-room-btn');
+            const cancelEditRoomBtn = document.getElementById('cancel-edit-room-btn');
+            const roomTypeSelectModal = document.getElementById('room-type-select-modal');
+            const saveRoomTypeBtn = document.getElementById('save-room-type-btn');
+
+            const passengerInfoView = document.getElementById('passenger-info-view');
+            const passengerEditView = document.getElementById('passenger-edit-view');
+            const editPassengerBtn = document.getElementById('edit-passenger-btn');
+            const savePassengerBtn = document.getElementById('save-passenger-btn');
+            const cancelEditBtn = document.getElementById('cancel-edit-btn');
+            const deletePassengerBtn = document.getElementById('delete-passenger-btn');
+            const addPassengerBtn = document.getElementById('add-passenger-btn');
+            
+            const editRoomTypeSelect = document.getElementById('edit-room-type-select');
+            const editRoomNumberSelect = document.getElementById('edit-room-number-select');
+            const roomNumberContainer = document.getElementById('room-number-container');
+
+            let currentPassengerId = null;
+            let currentRoomIdForAssignment = null;
+            let currentRoomIdForEdit = null;
+            let confirmAction = null;
+            let passengersData = [];
+            let roomsData = {};
+            let nextPassengerId = 46;
+
+            const defaultPassengers = [
+                { id: 'p1', name: 'Juan Pérez', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 1, assignedRoomType: 'Doble', assignedRoomNumber: 'D1', onWaitlist: false },
+                { id: 'p2', name: 'Ana García', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 2, assignedRoomType: 'Doble', assignedRoomNumber: 'D1', onWaitlist: false },
+                { id: 'p3', name: 'Carlos López', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 3, assignedRoomType: 'Doble', assignedRoomNumber: 'D2', onWaitlist: false },
+                { id: 'p4', name: 'María Ruiz', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 4, assignedRoomType: 'Doble', assignedRoomNumber: 'D2', onWaitlist: false },
+                { id: 'p5', name: 'Fernando Rey', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 5, assignedRoomType: 'Doble', assignedRoomNumber: 'D3', onWaitlist: false },
+                { id: 'p6', name: 'Pedro Gómez', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 6, assignedRoomType: 'Doble', assignedRoomNumber: 'D3', onWaitlist: false },
+                { id: 'p7', name: 'Patricia Solis', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 7, assignedRoomType: 'Doble', assignedRoomNumber: 'D4', onWaitlist: false },
+                { id: 'p8', name: 'Laura Díaz', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 8, assignedRoomType: 'Doble', assignedRoomNumber: 'D4', onWaitlist: false },
+                { id: 'p9', name: 'Miguel Sánchez', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 9, assignedRoomType: 'Doble', assignedRoomNumber: 'D5', onWaitlist: false },
+                { id: 'p10', name: 'Luis Cano', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 10, assignedRoomType: 'Doble', assignedRoomNumber: 'D5', onWaitlist: false },
+                { id: 'p11', name: 'Isabel Flores', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 11, assignedRoomType: 'Doble', assignedRoomNumber: 'D6', onWaitlist: false },
+                { id: 'p12', name: 'Nadia Ruiz', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 12, assignedRoomType: 'Doble', assignedRoomNumber: 'D6', onWaitlist: false },
+                { id: 'p13', name: 'Oscar Bravo', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 13, assignedRoomType: 'Doble', assignedRoomNumber: 'D7', onWaitlist: false },
+                { id: 'p14', name: 'Jorge Torres', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 14, assignedRoomType: 'Doble', assignedRoomNumber: 'D7', onWaitlist: false },
+                { id: 'p15', name: 'Elena Vargas', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 15, assignedRoomType: 'Doble', assignedRoomNumber: 'D8', onWaitlist: false },
+                { id: 'p16', name: 'Marta Pérez', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 16, assignedRoomType: 'Doble', assignedRoomNumber: 'D8', onWaitlist: false },
+                { id: 'p17', name: 'Ricardo Castro', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 17, assignedRoomType: 'Doble', assignedRoomNumber: 'D9', onWaitlist: false },
+                { id: 'p18', name: 'José Luis', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 18, assignedRoomType: 'Doble', assignedRoomNumber: 'D9', onWaitlist: false },
+                { id: 'p19', name: 'Fátima Gar.', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 19, assignedRoomType: 'Doble', assignedRoomNumber: 'D10', onWaitlist: false },
+                { id: 'p20', name: 'Sofía Morales', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 20, assignedRoomType: 'Doble', assignedRoomNumber: 'D10', onWaitlist: false },
+                { id: 'p21', name: 'David Ramos', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 21, assignedRoomType: 'Triple', assignedRoomNumber: 'T1', onWaitlist: false },
+                { id: 'p22', name: 'Gabriela Soto', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 22, assignedRoomType: 'Triple', assignedRoomNumber: 'T1', onWaitlist: false },
+                { id: 'p23', name: 'Arturo Herrera', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 23, assignedRoomType: 'Triple', assignedRoomNumber: 'T1', onWaitlist: false },
+                { id: 'p24', name: 'Verónica Reyes', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 24, assignedRoomType: 'Triple', assignedRoomNumber: 'T2', onWaitlist: false },
+                { id: 'p25', name: 'Héctor Soto', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 25, assignedRoomType: 'Triple', assignedRoomNumber: 'T2', onWaitlist: false },
+                { id: 'p26', name: 'Irene Montes', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 26, assignedRoomType: 'Triple', assignedRoomNumber: 'T2', onWaitlist: false },
+                { id: 'p27', name: 'Quintín Quintero', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 27, assignedRoomType: 'Triple', assignedRoomNumber: 'T3', onWaitlist: false },
+                { id: 'p28', name: 'Roberto Núñez', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 28, assignedRoomType: 'Triple', assignedRoomNumber: 'T3', onWaitlist: false },
+                { id: 'p29', name: 'Sara Vidal', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 29, assignedRoomType: 'Triple', assignedRoomNumber: 'T3', onWaitlist: false },
+                { id: 'p30', name: 'Tomás Pineda', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 30, assignedRoomType: 'Triple', assignedRoomNumber: 'T4', onWaitlist: false },
+                { id: 'p31', name: 'Julia López', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 31, assignedRoomType: 'Triple', assignedRoomNumber: 'T4', onWaitlist: false },
+                { id: 'p32', name: 'Úrsula González', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 32, assignedRoomType: 'Triple', assignedRoomNumber: 'T4', onWaitlist: false },
+                { id: 'p33', name: 'Víctor Ochoa', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 33, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q1', onWaitlist: false },
+                { id: 'p34', name: 'Kevin Díaz', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 34, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q1', onWaitlist: false },
+                { id: 'p35', name: 'Wendy Ortiz', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 35, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q1', onWaitlist: false },
+                { id: 'p36', name: 'Ximena Cruz', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 36, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q1', onWaitlist: false },
+                { id: 'p37', name: 'Yolanda Lira', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 37, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q2', onWaitlist: false },
+                { id: 'p38', name: 'Zoe Morales', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 38, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q2', onWaitlist: false },
+                { id: 'p39', name: 'Adriana Ruiz', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 39, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q2', onWaitlist: false },
+                { id: 'p40', name: 'Brandon Soto', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 40, assignedRoomType: 'Cuádruple', assignedRoomNumber: 'Q2', onWaitlist: false },
+                { id: 'p41', name: 'Daniela Vidal', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 41, assignedRoomType: 'Doble', assignedRoomNumber: null, onWaitlist: false },
+                { id: 'p42', name: 'Ernesto Ríos', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: 42, assignedRoomType: 'Doble', assignedRoomNumber: null, onWaitlist: false },
+                { id: 'p43', name: 'Fabiola Ortiz', type: 'Adulto', paymentStatus: 'deposit', assignedSeatNumber: 43, assignedRoomType: 'Triple', assignedRoomNumber: null, onWaitlist: false },
+                { id: 'p44', name: 'Gonzalo Mendoza', type: 'Adulto', paymentStatus: 'unpaid', assignedSeatNumber: 44, assignedRoomType: 'Cuádruple', assignedRoomNumber: null, onWaitlist: false },
+                { id: 'p45', name: 'Humberto Solis', type: 'Adulto', paymentStatus: null, assignedSeatNumber: null, assignedRoomType: null, assignedRoomNumber: null, onWaitlist: false },
+                { id: 'p46', name: 'Maria Waitlist', type: 'Adulto', paymentStatus: 'paid', assignedSeatNumber: null, assignedRoomType: null, assignedRoomNumber: null, onWaitlist: true }
+            ];
+
+            const defaultRooms = {
+                'D1': { id: 'D1', number: 1, type: 'Doble', capacity: 2, guests: [] },
+                'D2': { id: 'D2', number: 2, type: 'Doble', capacity: 2, guests: [] },
+                'D3': { id: 'D3', number: 3, type: 'Doble', capacity: 2, guests: [] },
+                'D4': { id: 'D4', number: 4, type: 'Doble', capacity: 2, guests: [] },
+                'D5': { id: 'D5', number: 5, type: 'Doble', capacity: 2, guests: [] },
+                'D6': { id: 'D6', number: 6, type: 'Doble', capacity: 2, guests: [] },
+                'D7': { id: 'D7', number: 7, type: 'Doble', capacity: 2, guests: [] },
+                'D8': { id: 'D8', number: 8, type: 'Doble', capacity: 2, guests: [] },
+                'D9': { id: 'D9', number: 9, type: 'Doble', capacity: 2, guests: [] },
+                'D10': { id: 'D10', number: 10, type: 'Doble', capacity: 2, guests: [] },
+                'T1': { id: 'T1', number: 1, type: 'Triple', capacity: 3, guests: [] },
+                'T2': { id: 'T2', number: 2, type: 'Triple', capacity: 3, guests: [] },
+                'T3': { id: 'T3', number: 3, type: 'Triple', capacity: 3, guests: [] },
+                'T4': { id: 'T4', number: 4, type: 'Triple', capacity: 3, guests: [] },
+                'Q1': { id: 'Q1', number: 1, type: 'Cuádruple', capacity: 4, guests: [] },
+                'Q2': { id: 'Q2', number: 2, type: 'Cuádruple', capacity: 4, guests: [] }
+            };
+
+            function saveData() {
+                localStorage.setItem('passengersData', JSON.stringify(passengersData));
+                localStorage.setItem('roomsData', JSON.stringify(roomsData));
+            }
+
+            function loadData() {
+                const savedPassengers = localStorage.getItem('passengersData');
+                const savedRooms = localStorage.getItem('roomsData');
+
+                if (savedPassengers && savedRooms) {
+                    passengersData = JSON.parse(savedPassengers);
+                    roomsData = JSON.parse(savedRooms);
+                    const maxId = passengersData.reduce((max, p) => {
+                        const num = parseInt(p.id.replace('p', ''));
+                        return num > max ? num : max;
+                    }, 0);
+                    nextPassengerId = maxId + 1;
+                } else {
+                    passengersData = defaultPassengers;
+                    initializeRoomAndGuestData();
+                    saveData();
+                }
+            }
+
+            function showContent(targetId) {
+                mapContainers.forEach(container => {
+                    container.classList.remove('active');
+                });
+                document.getElementById(targetId).classList.add('active');
+                const unassignedPassengersContainer = document.querySelector('.unassigned-passengers-container');
+                const waitlistPassengersContainer = document.querySelector('.waitlist-passengers-container');
+                if (targetId === 'seat-map') {
+                    unassignedPassengersContainer.style.display = 'block';
+                    waitlistPassengersContainer.style.display = 'block';
+                } else {
+                    unassignedPassengersContainer.style.display = 'none';
+                    waitlistPassengersContainer.style.display = 'none';
+                    unassignSeatZone.classList.remove('active');
+                }
+            }
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    navButtons.forEach(btn => btn.classList.remove('active-nav'));
+                    e.currentTarget.classList.add('active-nav');
+                    const targetId = e.currentTarget.getAttribute('data-target');
+                    showContent(targetId);
+                });
+            });
+
+            function showCustomConfirm(title, message, callback, okText = 'Aceptar', cancelText = 'Cancelar') {
+                document.getElementById('confirm-modal-title').textContent = title;
+                document.getElementById('confirm-modal-message').textContent = message;
+                confirmOkBtn.textContent = okText;
+                confirmAction = callback;
+                confirmModal.classList.add('show');
+            }
+
+            confirmOkBtn.addEventListener('click', () => {
+                if (confirmAction) {
+                    confirmAction();
+                }
+                confirmModal.classList.remove('show');
+                confirmAction = null;
+            });
+
+            confirmCancelBtn.addEventListener('click', () => {
+                confirmModal.classList.remove('show');
+                confirmAction = null;
+            });
+
+            function showPassengerDetails(passenger) {
+                currentPassengerId = passenger.id;
+                document.getElementById('modal-passenger-name').textContent = passenger.name;
+                document.getElementById('modal-payment-status').textContent = passenger.paymentStatus ? getPaymentStatusText(passenger.paymentStatus) : 'N/A';
+                document.getElementById('modal-seat-number').textContent = passenger.assignedSeatNumber ? `Asiento ${passenger.assignedSeatNumber}` : passenger.onWaitlist ? 'Lista de Espera' : 'No Asignado';
+                document.getElementById('modal-room-number').textContent = passenger.assignedRoomNumber ? `Habitación ${roomsData[passenger.assignedRoomNumber].number}` : 'No Asignado';
+                document.getElementById('modal-room-type').textContent = passenger.assignedRoomType ? passenger.assignedRoomType : 'N/A';
+
+                document.getElementById('edit-passenger-name').value = passenger.name;
+                document.getElementById('edit-payment-status').value = passenger.paymentStatus || 'unpaid';
+                document.getElementById('edit-seat-number').value = passenger.assignedSeatNumber || '';
+                document.getElementById('edit-room-type-select').value = passenger.assignedRoomType || '';
+                populateRoomNumberSelect(passenger.assignedRoomType || '');
+                document.getElementById('edit-room-number-select').value = passenger.assignedRoomNumber || '';
+                
+                passengerInfoView.style.display = 'block';
+                passengerEditView.style.display = 'none';
+                document.getElementById('edit-modal-title').textContent = 'Modificar Pasajero';
+                document.getElementById('delete-passenger-btn').style.display = 'block';
+                passengerDetailsModal.classList.add('show');
+            }
+
+            function getPaymentStatusText(status) {
+                 if (status === 'paid') return 'Pagado';
+                 if (status === 'deposit') return 'Con Depósito';
+                 if (status === 'unpaid') return 'Sin Pagar';
+                 return 'N/A';
+            }
+
+            function openNewPassengerModal(seatNumber = null) {
+                currentPassengerId = null;
+                document.getElementById('edit-modal-title').textContent = 'Registrar Nuevo Pasajero';
+                document.getElementById('edit-passenger-name').value = '';
+                document.getElementById('edit-payment-status').value = 'unpaid';
+                document.getElementById('edit-seat-number').value = seatNumber || '';
+                document.getElementById('edit-seat-number').disabled = seatNumber !== null;
+                document.getElementById('edit-room-type-select').value = '';
+                document.getElementById('edit-room-number-select').innerHTML = '';
+                roomNumberContainer.style.display = 'none';
+                document.getElementById('delete-passenger-btn').style.display = 'none';
+                passengerInfoView.style.display = 'none';
+                passengerEditView.style.display = 'block';
+                passengerDetailsModal.classList.add('show');
+            }
+
+            modalCloseButton.addEventListener('click', () => {
+                passengerDetailsModal.classList.remove('show');
+            });
+            
+            addPassengerBtn.addEventListener('click', () => {
+                openNewPassengerModal();
+            });
+
+            editPassengerBtn.addEventListener('click', () => {
+                passengerInfoView.style.display = 'none';
+                passengerEditView.style.display = 'block';
+            });
+
+            cancelEditBtn.addEventListener('click', () => {
+                if (currentPassengerId) {
+                    passengerInfoView.style.display = 'block';
+                    passengerEditView.style.display = 'none';
+                } else {
+                    passengerDetailsModal.classList.remove('show');
+                }
+            });
+
+            deletePassengerBtn.addEventListener('click', () => {
+                showCustomConfirm(
+                    'Eliminar Pasajero',
+                    `¿Estás seguro de que quieres eliminar a ${findPassengerById(currentPassengerId).name}? Esta acción no se puede deshacer.`,
+                    () => {
+                        deletePassenger(currentPassengerId);
+                        passengerDetailsModal.classList.remove('show');
+                        renderAll();
+                    },
+                    'Eliminar'
+                );
+            });
+
+            function deletePassenger(passengerId) {
+                const index = passengersData.findIndex(p => p.id === passengerId);
+                if (index > -1) {
+                    const passenger = passengersData[index];
+                    if (passenger.assignedRoomNumber) {
+                        unassignGuestFromRoom(passengerId);
+                    }
+                    if (passenger.assignedSeatNumber) {
+                        passenger.assignedSeatNumber = null;
+                    }
+                    passengersData.splice(index, 1);
+                    saveData();
+                }
+            }
+
+
+            function populateRoomNumberSelect(roomType) {
+                editRoomNumberSelect.innerHTML = '';
+                if (!roomType) {
+                    roomNumberContainer.style.display = 'none';
+                    return;
+                }
+                
+                roomNumberContainer.style.display = 'block';
+                
+                const roomsOfType = Object.values(roomsData).filter(r => r.type === roomType);
+                roomsOfType.forEach(room => {
+                    const roomStatus = room.guests.length < room.capacity ? `(${room.guests.length}/${room.capacity})` : `(Lleno)`;
+                    const option = document.createElement('option');
+                    option.value = room.id;
+                    option.textContent = `Habitación ${room.number} ${roomStatus}`;
+                    if (room.guests.length >= room.capacity) {
+                        option.disabled = true;
+                    }
+                    editRoomNumberSelect.appendChild(option);
+                });
+            }
+
+            editRoomTypeSelect.addEventListener('change', (e) => {
+                populateRoomNumberSelect(e.target.value);
+            });
+
+            savePassengerBtn.addEventListener('click', () => {
+                const newName = document.getElementById('edit-passenger-name').value.trim();
+                const newPaymentStatus = document.getElementById('edit-payment-status').value;
+                const newSeatNumberInput = document.getElementById('edit-seat-number');
+                const newSeatNumber = newSeatNumberInput.value ? parseInt(newSeatNumberInput.value) : null;
+                const newRoomType = editRoomTypeSelect.value;
+                const newRoomId = editRoomNumberSelect.value;
+                
+                if (!newName) {
+                    showCustomConfirm('Error', 'El nombre no puede estar vacío.', () => {}, 'Aceptar');
+                    return;
+                }
+                
+                if (newSeatNumber) {
+                    if (newSeatNumber < 1 || newSeatNumber > 44) {
+                        showCustomConfirm('Error', 'El número de asiento no es válido (1-44).', () => {}, 'Aceptar');
+                        return;
+                    }
+                }
+                
+                if (currentPassengerId) {
+                    // Editing existing passenger
+                    const passenger = findPassengerById(currentPassengerId);
+                    if (passenger) {
+                        if (newSeatNumber !== passenger.assignedSeatNumber) {
+                            if (newSeatNumber) {
+                                const existingPassengerAtNewSeat = findPassengerBySeatNumber(newSeatNumber);
+                                if (existingPassengerAtNewSeat && existingPassengerAtNewSeat.id !== passenger.id) {
+                                    showCustomConfirm('Error', `El asiento ${newSeatNumber} ya está ocupado por ${existingPassengerAtNewSeat.name}.`, () => {}, 'Aceptar');
+                                    return;
+                                }
+                            }
+                            if (passenger.assignedSeatNumber) {
+                                const oldSeatPassenger = findPassengerBySeatNumber(passenger.assignedSeatNumber);
+                                if (oldSeatPassenger) oldSeatPassenger.assignedSeatNumber = null;
+                            }
+                            passenger.assignedSeatNumber = newSeatNumber;
+                            passenger.onWaitlist = false;
+                        }
+                        
+                        if (newRoomId !== passenger.assignedRoomNumber) {
+                            if (newRoomId) {
+                                const room = roomsData[newRoomId];
+                                if (room.guests.length >= room.capacity && room.guests.find(g => g.id === passenger.id) === undefined) {
+                                    showCustomConfirm('Error', `La habitación ${room.number} está llena.`, () => {}, 'Aceptar');
+                                    return;
+                                }
+                                unassignGuestFromRoom(passenger.id);
+                                assignGuestToRoom(passenger.id, newRoomId);
+                            } else {
+                                unassignGuestFromRoom(passenger.id);
+                            }
+                        }
+
+                        passenger.name = newName;
+                        passenger.paymentStatus = newPaymentStatus;
+                        
+                        if (newRoomType !== passenger.assignedRoomType) {
+                            passenger.assignedRoomType = newRoomType;
+                        }
+
+                        saveData();
+                    }
+                } else {
+                    // Creating new passenger
+                    const newId = 'p' + nextPassengerId++;
+                    const existingPassengerAtSeat = findPassengerBySeatNumber(newSeatNumber);
+                    if (newSeatNumber && existingPassengerAtSeat) {
+                        showCustomConfirm('Error', `El asiento ${newSeatNumber} ya está ocupado por ${existingPassengerAtSeat.name}.`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    
+                    let isOnWaitlist = false;
+                    const occupiedSeatsCount = passengersData.filter(p => p.assignedSeatNumber).length;
+                    if (!newSeatNumber && occupiedSeatsCount >= 44) {
+                        isOnWaitlist = true;
+                    }
+
+                    const newPassenger = crearPasajero(newName, newSeatNumber, newRoomType, isOnWaitlist, newPaymentStatus);
+
+                    passengersData.push(newPassenger);
+                    if(newRoomId) assignGuestToRoom(newPassenger.id, newRoomId);
+
+                    saveData();
+                }
+
+                passengerDetailsModal.classList.remove('show');
+                renderAll();
+            });
+
+            assignmentModalCloseButton.addEventListener('click', () => {
+                roomAssignmentModal.classList.remove('show');
+            });
+            
+            editRoomModalCloseBtn.addEventListener('click', () => {
+                editRoomModal.classList.remove('show');
+            });
+
+            cancelEditRoomBtn.addEventListener('click', () => {
+                 editRoomModal.classList.remove('show');
+            });
+
+            saveRoomTypeBtn.addEventListener('click', () => {
+                const newRoomType = roomTypeSelectModal.value;
+                const room = roomsData[currentRoomIdForAssignment];
+                if (!room) return;
+
+                if (room.type === newRoomType) {
+                    roomAssignmentModal.classList.remove('show');
+                    return;
+                }
+
+                const newCapacity = newRoomType === 'Doble' ? 2 : newRoomType === 'Triple' ? 3 : 4;
+                const currentGuests = room.guests.length;
+
+                if (currentGuests > newCapacity) {
+                    showCustomConfirm(
+                        'Confirmar Reducción de Capacidad',
+                        `Esta habitación tiene ${currentGuests} huéspedes y la nueva capacidad es ${newCapacity}. Los ${currentGuests - newCapacity} huéspedes excedentes serán desasignados. ¿Deseas continuar?`,
+                        () => {
+                            updateRoomCapacity(room, newRoomType, newCapacity);
+                            roomAssignmentModal.classList.remove('show');
+                            renderAll();
+                        },
+                        'Continuar'
+                    );
+                } else {
+                    updateRoomCapacity(room, newRoomType, newCapacity);
+                    roomAssignmentModal.classList.remove('show');
+                    renderAll();
+                }
+            });
+
+
+            function updateRoomCapacity(room, newRoomType, newCapacity) {
+                 room.type = newRoomType;
+                 room.capacity = newCapacity;
+                 
+                 while (room.guests.length > newCapacity) {
+                    const guestToUnassign = room.guests.pop();
+                    guestToUnassign.assignedRoomType = null;
+                    guestToUnassign.assignedRoomNumber = null;
+                 }
+
+                 room.guests.forEach(guest => {
+                    guest.assignedRoomType = newRoomType;
+                 });
+
+                 saveData();
+                 initializeRoomAndGuestData();
+            }
+
+            const seatingLayout = [
+                [1, 2, 'aisle', 3, 4], [5, 6, 'aisle', 7, 8], [9, 10, 'aisle', 11, 12],
+                [13, 14, 'aisle', 15, 16], [17, 18, 'aisle', 19, 20], [21, 22, 'aisle', 23, 24],
+                [25, 26, 'aisle', 27, 28], [29, 30, 'aisle', 31, 32], [33, 34, 'aisle', 35, 36],
+                [37, 38, 'aisle', 39, 40], [41, 42, 'aisle', 43, 44]
+            ];
+            const seatMapContainer = document.getElementById('seat-grid');
+            const unassignedPassengersGrid = document.getElementById('unassignedPassengersGrid');
+            const waitlistPassengersGrid = document.getElementById('waitlistPassengersGrid');
+            let draggedSeat = null;
+
+            function findPassengerBySeatNumber(seatNumber) {
+                return passengersData.find(p => p.assignedSeatNumber === seatNumber);
+            }
+            function findPassengerById(id) {
+                return passengersData.find(p => p.id === id);
+            }
+            function getPaymentIndicatorClass(status) {
+                let colorClass = '';
+                if (status === 'paid') colorClass = 'seat-payment-indicator-paid';
+                if (status === 'deposit') colorClass = 'seat-payment-indicator-deposit';
+                if (status === 'unpaid') colorClass = 'seat-payment-indicator-unpaid';
+                return `seat-payment-indicator ${colorClass}`;
+            }
+
+            function createSeatElement(seatNumber) {
+                const seatWrapper = document.createElement('div');
+                seatWrapper.className = 'seat-wrapper';
+                seatWrapper.setAttribute('data-seat-number', seatNumber);
+                const passenger = findPassengerBySeatNumber(seatNumber);
+
+                const seatDiv = document.createElement('div');
+                seatDiv.className = 'seat';
+                seatDiv.textContent = seatNumber;
+
+                if (passenger) {
+                    seatDiv.classList.add('seat-occupied');
+                    seatDiv.setAttribute('data-passenger-id', passenger.id);
+                    const paymentIndicator = document.createElement('div');
+                    paymentIndicator.className = getPaymentIndicatorClass(passenger.paymentStatus);
+                    seatDiv.appendChild(paymentIndicator);
+
+                    const infoFrame = document.createElement('div');
+                    infoFrame.className = 'seat-info-frame';
+
+                    const nameParts = passenger.name.split(' ');
+                    const firstName = nameParts.shift();
+                    const lastName = nameParts.join(' ');
+
+                    const nameFrame = document.createElement('span');
+                    nameFrame.className = 'passenger-name-frame';
+                    nameFrame.innerHTML = `${firstName}<br>${lastName}`;
+
+                    infoFrame.appendChild(nameFrame);
+                    seatWrapper.appendChild(seatDiv);
+                    seatWrapper.appendChild(infoFrame);
+
+                    seatWrapper.setAttribute('draggable', 'true');
+                    seatWrapper.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showPassengerDetails(passenger);
+                    });
+
+                } else {
+                    seatDiv.classList.add('seat-available');
+                    seatWrapper.appendChild(seatDiv);
+                    seatWrapper.setAttribute('draggable', 'false');
+                    seatWrapper.addEventListener('click', () => {
+                        openNewPassengerModal(seatNumber);
+                    });
+                }
+                return seatWrapper;
+            }
+
+            function createUnassignedPassengerChip(passenger) {
+                const chip = document.createElement('div');
+                chip.className = 'unassigned-passenger-chip';
+                chip.setAttribute('data-passenger-id', passenger.id);
+                chip.setAttribute('draggable', 'true');
+                chip.textContent = passenger.name;
+                chip.addEventListener('click', () => showPassengerDetails(passenger));
+                return chip;
+            }
+            
+            function createWaitlistPassengerChip(passenger) {
+                const chip = document.createElement('div');
+                chip.className = 'waitlist-passenger-chip';
+                chip.setAttribute('data-passenger-id', passenger.id);
+                chip.setAttribute('draggable', 'true');
+                chip.textContent = passenger.name;
+                chip.addEventListener('click', () => showPassengerDetails(passenger));
+                return chip;
+            }
+
+            function renderSeatMap() {
+                seatMapContainer.innerHTML = '';
+                const driverCabin = document.createElement('div');
+                driverCabin.className = 'driver-cabin';
+                driverCabin.textContent = 'Cabina del Conductor';
+                seatMapContainer.appendChild(driverCabin);
+
+                seatingLayout.forEach(row => {
+                    row.forEach(cell => {
+                        if (cell === 'aisle') {
+                            const aisleColumn = document.createElement('div');
+                            aisleColumn.className = 'aisle-column';
+                            const aisleLine = document.createElement('div');
+                            aisleLine.className = 'aisle-line';
+                            aisleColumn.appendChild(aisleLine);
+                            seatMapContainer.appendChild(aisleColumn);
+                        } else {
+                            seatMapContainer.appendChild(createSeatElement(cell));
+                        }
+                    });
+                });
+
+                unassignedPassengersGrid.innerHTML = '';
+                passengersData.filter(p => !p.assignedSeatNumber && !p.assignedRoomNumber && !p.onWaitlist).forEach(passenger => {
+                    unassignedPassengersGrid.appendChild(createUnassignedPassengerChip(passenger));
+                });
+                
+                waitlistPassengersGrid.innerHTML = '';
+                passengersData.filter(p => p.onWaitlist).forEach(passenger => {
+                    waitlistPassengersGrid.appendChild(createWaitlistPassengerChip(passenger));
+                });
+            }
+
+            let draggedGuest = null;
+            let unassignedGuestsData = [];
+
+            function initializeRoomAndGuestData() {
+                unassignedGuestsData = [];
+                Object.values(roomsData).forEach(room => {
+                    room.guests = [];
+                });
+                passengersData.forEach(p => {
+                    if (p.assignedRoomType && p.assignedRoomNumber) {
+                        const roomId = p.assignedRoomNumber;
+                        if (!roomsData[roomId]) {
+                            const roomType = p.assignedRoomType;
+                            let capacity = 0;
+                            if (roomType === 'Doble') capacity = 2;
+                            if (roomType === 'Triple') capacity = 3;
+                            if (roomType === 'Cuádruple') capacity = 4;
+                            roomsData[roomId] = { id: roomId, number: roomId.slice(1), type: roomType, capacity, guests: [] };
+                        }
+                        roomsData[roomId].guests.push(p);
+                    } else if (p.assignedRoomType) {
+                        unassignedGuestsData.push(p);
+                    }
+                });
+            }
+
+            function renderRooms() {
+                const unassignedGrid = document.getElementById('unassignedGuestsGrid');
+                const doubleRoomsGrid = document.getElementById('doubleRoomsGrid');
+                const tripleRoomsGrid = document.getElementById('tripleRoomsGrid');
+                const quadrupleRoomsGrid = document.getElementById('quadrupleRoomsGrid');
+                unassignedGrid.innerHTML = '';
+                doubleRoomsGrid.innerHTML = '';
+                tripleRoomsGrid.innerHTML = '';
+                quadrupleRoomsGrid.innerHTML = '';
+
+                unassignedGuestsData.forEach(guest => {
+                    unassignedGrid.appendChild(createGuestElement(guest, guest.assignedRoomType));
+                });
+                unassignedGrid.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const guestId = e.dataTransfer.getData('text/plain');
+                    if (guestId) {
+                        unassignGuestFromRoom(guestId);
+                        renderAll();
+                    }
+                });
+
+
+                const sortedRoomIds = Object.keys(roomsData).sort((a, b) => {
+                    const numA = parseInt(a.substring(1));
+                    const numB = parseInt(b.substring(1));
+                    return numA - numB;
+                });
+
+                sortedRoomIds.forEach(roomId => {
+                    const room = roomsData[roomId];
+                    const roomElement = createRoomElement(room);
+                    if (room.type === 'Doble') {
+                        doubleRoomsGrid.appendChild(roomElement);
+                    } else if (room.type === 'Triple') {
+                        tripleRoomsGrid.appendChild(roomElement);
+                    } else if (room.type === 'Cuádruple') {
+                        quadrupleRoomsGrid.appendChild(roomElement);
+                    }
+                });
+
+                const addDoubleCard = createAddRoomCard('Doble');
+                doubleRoomsGrid.appendChild(addDoubleCard);
+                const addTripleCard = createAddRoomCard('Triple');
+                tripleRoomsGrid.appendChild(addTripleCard);
+                const addQuadrupleCard = createAddRoomCard('Cuádruple');
+                quadrupleRoomsGrid.appendChild(addQuadrupleCard);
+
+                document.querySelectorAll('.menu-icon').forEach(icon => {
+                    icon.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const roomMenu = e.target.closest('.room-menu');
+                        const dropdown = roomMenu.querySelector('.room-menu-dropdown');
+                        document.querySelectorAll('.room-menu-dropdown.show').forEach(d => {
+                            if (d !== dropdown) d.classList.remove('show');
+                        });
+                        dropdown.classList.toggle('show');
+                    });
+                });
+            }
+
+            function openRoomAssignmentModal(roomId) {
+                currentRoomIdForAssignment = roomId;
+                const room = roomsData[roomId];
+                document.getElementById('current-room-modal-title').textContent = `${room.type} ${room.number}`;
+                roomTypeSelectModal.value = room.type;
+
+                const currentRoomSection = document.getElementById('current-room-section');
+                currentRoomSection.className = `assignment-list-section current-room-section-${room.type.toLowerCase().replace('á', 'a')}`;
+
+                const currentRoomList = document.getElementById('current-room-guests-list');
+                const unassignedList = document.getElementById('unassigned-guests-list');
+                const otherRoomsList = document.getElementById('other-rooms-guests-list');
+                currentRoomList.innerHTML = '';
+                unassignedList.innerHTML = '';
+                otherRoomsList.innerHTML = '';
+
+                const currentRoomGuestsCount = document.getElementById('current-room-guests-count');
+                const currentRoomCapacity = document.getElementById('current-room-capacity');
+
+                const isRoomFull = room.guests.length >= room.capacity;
+                currentRoomGuestsCount.textContent = room.guests.length;
+                currentRoomCapacity.textContent = room.capacity;
+
+
+                room.guests.forEach(guest => {
+                    const item = document.createElement('li');
+                    item.className = 'assignment-guest-item';
+                    item.textContent = guest.name;
+                    item.setAttribute('data-guest-id', guest.id);
+                    item.addEventListener('click', () => {
+                        unassignGuestFromRoom(guest.id);
+                        renderAll();
+                        openRoomAssignmentModal(roomId);
+                    });
+                    currentRoomList.appendChild(item);
+                });
+
+                unassignedGuestsData.forEach(guest => {
+                    const item = createAssignmentGuestItem(guest, roomId, isRoomFull);
+                    unassignedList.appendChild(item);
+                });
+
+                const otherRoomsGuests = [];
+                Object.keys(roomsData).forEach(id => {
+                    if (id !== roomId) {
+                        roomsData[id].guests.forEach(guest => otherRoomsGuests.push(guest));
+                    }
+                });
+
+                otherRoomsGuests.forEach(guest => {
+                    const item = createAssignmentGuestItem(guest, roomId, isRoomFull);
+                    otherRoomsList.appendChild(item);
+                });
+
+                roomAssignmentModal.classList.add('show');
+            }
+
+            function createAssignmentGuestItem(guest, targetRoomId, isRoomFull) {
+                const item = document.createElement('li');
+                item.className = 'assignment-guest-item';
+                item.textContent = guest.name;
+                item.setAttribute('data-guest-id', guest.id);
+
+                if (isRoomFull) {
+                    item.classList.add('disabled');
+                } else {
+                    item.addEventListener('click', () => {
+                        assignGuestToRoom(guest.id, targetRoomId);
+                        renderAll();
+                        openRoomAssignmentModal(targetRoomId);
+                    });
+                }
+                return item;
+            }
+
+            function assignGuestToRoom(guestId, newRoomId) {
+                const guest = passengersData.find(p => p.id === guestId);
+                if (!guest) return;
+
+                if (guest.assignedRoomNumber && roomsData[guest.assignedRoomNumber]) {
+                    const prevRoom = roomsData[guest.assignedRoomNumber];
+                    prevRoom.guests = prevRoom.guests.filter(g => g.id !== guest.id);
+                }
+
+                const newRoom = roomsData[newRoomId];
+                if (newRoom && newRoom.guests.length < newRoom.capacity) {
+                    guest.assignedRoomType = newRoom.type;
+                    guest.assignedRoomNumber = newRoom.id;
+                    newRoom.guests.push(guest);
+                    saveData();
+                } else {
+                    showCustomConfirm('Error', `La habitación ${newRoom.number} está llena.`, () => {}, 'Aceptar');
+                }
+                initializeRoomAndGuestData();
+            }
+
+            function unassignGuestFromRoom(guestId) {
+                const guest = passengersData.find(p => p.id === guestId);
+                if (!guest || !guest.assignedRoomNumber) return;
+
+                const room = roomsData[guest.assignedRoomNumber];
+                room.guests = room.guests.filter(g => g.id !== guest.id);
+
+                guest.assignedRoomNumber = null;
+                saveData();
+                initializeRoomAndGuestData();
+            }
+
+
+            function createGuestElement(guest, roomType = null) {
+                const guestElement = document.createElement('div');
+                guestElement.className = 'guest guest-chip';
+                guestElement.setAttribute('draggable', 'true');
+                guestElement.setAttribute('data-guest-id', guest.id);
+                guestElement.textContent = guest.name;
+
+                if (roomType) {
+                    guestElement.classList.add(`guest-chip-${roomType.toLowerCase().replace('á', 'a')}`);
+                }
+
+                guestElement.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showPassengerDetails(guest);
+                });
+
+                return guestElement;
+            }
+
+            function createRoomElement(room) {
+                const roomElement = document.createElement('div');
+                roomElement.className = 'room';
+                roomElement.setAttribute('data-room-id', room.id);
+                roomElement.innerHTML = `
+                    <div class="room-header">
+                        <span class="room-number">Hab. ${room.number} (${room.guests.length}/${room.capacity})</span>
+                        <div class="room-menu">
+                          <i class="menu-icon material-icons">more_vert</i>
+                          <div class="room-menu-dropdown">
+                            <div class="room-menu-item" data-action="edit-room">
+                              <i class="material-icons text-yellow-500">edit</i>
+                              <span>Gestionar Huéspedes</span>
+                            </div>
+                            <div class="room-menu-item" data-action="delete-room">
+                              <i class="material-icons text-red-500">delete</i>
+                              <span>Eliminar Habitación</span>
+                            </div>
+                          </div>
+                        </div>
+                    </div>
+                    <div class="guest-list"></div>
+                `;
+                const guestList = roomElement.querySelector('.guest-list');
+                room.guests.forEach(guest => {
+                    guestList.appendChild(createGuestElement(guest, room.type));
+                });
+                
+                roomElement.querySelector('[data-action="delete-room"]').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showCustomConfirm(
+                        'Eliminar Habitación',
+                        `¿Estás seguro de que quieres eliminar la habitación ${room.number}? Los huéspedes asignados serán movidos a "Huéspedes No Asignados".`,
+                        () => {
+                           deleteRoom(room.id);
+                           renderAll();
+                        },
+                        'Eliminar'
+                    );
+                });
+                
+                roomElement.querySelector('[data-action="edit-room"]').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openRoomAssignmentModal(room.id);
+                });
+                return roomElement;
+            }
+
+            function deleteRoom(roomId) {
+                const room = roomsData[roomId];
+                if (!room) return;
+
+                room.guests.forEach(guest => {
+                    guest.assignedRoomNumber = null;
+                });
+                delete roomsData[roomId];
+                saveData();
+            }
+            
+            function createAddRoomCard(roomType) {
+                const card = document.createElement('div');
+                card.className = 'add-room-card';
+                card.innerHTML = `
+                    <i class="add-room-icon material-icons">add</i>
+                    <span class="add-room-text">Añadir Habitación ${roomType}</span>
+                `;
+                card.addEventListener('click', () => addRoom(roomType));
+                return card;
+            }
+
+            function addRoom(roomType) {
+                const roomIds = Object.keys(roomsData).filter(id => roomsData[id].type === roomType);
+                const lastRoomNumber = roomIds.length > 0 ? Math.max(...roomIds.map(id => parseInt(id.slice(1)))) : 0;
+                const newRoomNumber = lastRoomNumber + 1;
+                const newRoomId = roomType.charAt(0).toUpperCase() + newRoomNumber;
+                const capacity = roomType === 'Doble' ? 2 : roomType === 'Triple' ? 3 : 4;
+                roomsData[newRoomId] = { id: newRoomId, number: newRoomNumber, type: roomType, capacity: capacity, guests: [] };
+                saveData();
+                renderAll();
+            }
+
+            document.addEventListener('click', (e) => {
+              if (!e.target.closest('.room-menu')) {
+                document.querySelectorAll('.room-menu-dropdown.show').forEach(d => d.classList.remove('show'));
+              }
+            });
+
+            document.addEventListener('dragstart', (e) => {
+                const target = e.target.closest('.guest, .seat-wrapper, .unassigned-passenger-chip, .waitlist-passenger-chip');
+                if (!target || target.getAttribute('draggable') !== 'true') {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (target.classList.contains('guest')) {
+                    draggedGuest = target;
+                    draggedGuest.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', `guest:${target.getAttribute('data-guest-id')}`);
+                } else if (target.classList.contains('unassigned-passenger-chip')) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', `unassigned-seat-guest:${target.getAttribute('data-passenger-id')}`);
+                } else if (target.classList.contains('waitlist-passenger-chip')) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', `waitlist-seat-guest:${target.getAttribute('data-passenger-id')}`);
+                } else if (target.classList.contains('seat-wrapper') && target.querySelector('.seat-occupied')) {
+                    draggedSeat = target;
+                    draggedSeat.classList.add('dragging-source');
+                    e.dataTransfer.effectAllowed = 'move';
+                    const dragImage = draggedSeat.cloneNode(true);
+                    dragImage.classList.add('dragging-item');
+                    dragImage.style.width = draggedSeat.offsetWidth + 'px';
+                    document.body.appendChild(dragImage);
+                    e.dataTransfer.setDragImage(dragImage, e.offsetX, e.offsetY);
+                    setTimeout(() => dragImage.remove(), 0);
+
+                    unassignSeatZone.classList.add('active');
+                }
+            });
+
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                const dropTarget = e.target.closest('.room, .add-room-card, #unassignedGuestsGrid, .seat-wrapper, #unassign-seat-zone');
+                
+                const data = e.dataTransfer.getData('text/plain');
+                
+                if (data.startsWith('guest:')) {
+                    if (dropTarget) {
+                        const guestId = data.split(':')[1];
+                        const guest = findPassengerById(guestId);
+                        if (dropTarget.id === 'unassignedGuestsGrid') {
+                            dropTarget.classList.add('drag-over');
+                        } else if (dropTarget.classList.contains('room')) {
+                            const roomId = dropTarget.getAttribute('data-room-id');
+                            const room = roomsData[roomId];
+                            if (room.type === guest.assignedRoomType && room.guests.length < room.capacity) {
+                                dropTarget.classList.add('drag-over');
+                            }
+                        }
+                    }
+                } else if (data.startsWith('unassigned-seat-guest:') || data.startsWith('waitlist-seat-guest:')) {
+                    if (dropTarget && dropTarget.classList.contains('seat-wrapper') && !dropTarget.querySelector('.seat-occupied')) {
+                        dropTarget.classList.add('drag-over');
+                    }
+                } else if (draggedSeat) {
+                    if (dropTarget) {
+                        if (dropTarget.id === 'unassign-seat-zone') {
+                            dropTarget.classList.add('drag-over');
+                        } else if (dropTarget.classList.contains('seat-wrapper')) {
+                            const dropSeatNumber = dropTarget.getAttribute('data-seat-number');
+                            if (dropSeatNumber) {
+                                dropTarget.classList.add('drag-over');
+                            }
+                        }
+                    }
+                }
+            });
+
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const dropTarget = e.target.closest('.room, #unassignedGuestsGrid, .seat-wrapper, #unassign-seat-zone');
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                const data = e.dataTransfer.getData('text/plain');
+                
+                if (data.startsWith('guest:')) {
+                    const guestId = data.split(':')[1];
+                    if (dropTarget && dropTarget.id === 'unassignedGuestsGrid') {
+                        unassignGuestFromRoom(guestId);
+                    } else if (dropTarget && dropTarget.classList.contains('room')) {
+                        const roomId = dropTarget.getAttribute('data-room-id');
+                        assignGuestToRoom(guestId, roomId);
+                    }
+                    renderAll();
+                } else if (draggedSeat && dropTarget) {
+                    const dragSeatNumber = parseInt(draggedSeat.getAttribute('data-seat-number'));
+                    const draggedPassenger = findPassengerBySeatNumber(dragSeatNumber);
+                    
+                    if (dropTarget.id === 'unassign-seat-zone') {
+                        showCustomConfirm(
+                            'Desasignar Asiento',
+                            `¿Estás seguro de que quieres desasignar a ${draggedPassenger.name} del asiento ${dragSeatNumber}?`,
+                            () => {
+                                draggedPassenger.assignedSeatNumber = null;
+                                draggedPassenger.onWaitlist = false;
+                                saveData();
+                                renderAll();
+                            },
+                            'Desasignar'
+                        );
+                    } else if (dropTarget.classList.contains('seat-wrapper')) {
+                        const dropSeatNumber = parseInt(dropTarget.getAttribute('data-seat-number'));
+                        if (draggedPassenger) {
+                             const targetPassenger = findPassengerBySeatNumber(dropSeatNumber);
+                             if (targetPassenger) { // Swap passengers
+                                 draggedPassenger.assignedSeatNumber = dropSeatNumber;
+                                 targetPassenger.assignedSeatNumber = dragSeatNumber;
+                             } else { // Move to empty seat
+                                 draggedPassenger.assignedSeatNumber = dropSeatNumber;
+                             }
+                            saveData();
+                        }
+                    }
+                    renderAll();
+                } else if ((data.startsWith('unassigned-seat-guest:') || data.startsWith('waitlist-seat-guest:')) && dropTarget && dropTarget.classList.contains('seat-wrapper') && !dropTarget.querySelector('.seat-occupied')) {
+                    const passengerId = data.split(':')[1];
+                    const seatNumber = parseInt(dropTarget.getAttribute('data-seat-number'));
+                    const passenger = findPassengerById(passengerId);
+                    if (passenger) {
+                        passenger.assignedSeatNumber = seatNumber;
+                        passenger.onWaitlist = false;
+                        saveData();
+                    }
+                    renderAll();
+                }
+            });
+
+            document.addEventListener('dragend', () => {
+                if (draggedGuest) {
+                    draggedGuest.classList.remove('dragging');
+                    draggedGuest = null;
+                }
+                if (draggedSeat) {
+                    draggedSeat.classList.remove('dragging-source');
+                    draggedSeat = null;
+                }
+                unassignSeatZone.classList.remove('active');
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            });
+
+            function renderAll() {
+                loadData();
+                initializeRoomAndGuestData();
+                renderRooms();
+                renderSeatMap();
+            }
+
+            // 🧠 Módulo de Asistente por Voz integrado
+            const micButton = document.getElementById('mic-button');
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'es-MX';
+            recognition.interimResults = false;
+            recognition.continuous = false;
+            
+            micButton.addEventListener('mousedown', () => { recognition.start(); });
+            micButton.addEventListener('mouseup', () => { recognition.stop(); });
+
+            recognition.onresult = function (event) {
+                const texto = event.results[0][0].transcript.toLowerCase();
+                console.log('🎙️ Texto reconocido:', texto);
+                const comando = interpretarComando(texto);
+                if (comando) {
+                    ejecutarComando(comando);
+                } else {
+                    showCustomConfirm('Comando no reconocido', `No se pudo entender el comando: "${texto}". Por favor, intenta de nuevo.`, () => {}, 'Aceptar');
+                }
+            };
+
+            function interpretarComando(texto) {
+                // 1. Asignar asiento directo
+                const matchAsignarAsiento = texto.match(/asigna a (.+) al asiento (\d+)/);
+                if (matchAsignarAsiento) return { intent: 'asignar_asiento', nombre: matchAsignarAsiento[1].trim(), asiento: parseInt(matchAsignarAsiento[2]) };
+
+                // 2. Desocupar asiento
+                const matchDesocuparAsiento = texto.match(/desocupa el asiento (\d+)/);
+                if (matchDesocuparAsiento) return { intent: 'desocupar_asiento', asiento: parseInt(matchDesocuparAsiento[1]) };
+
+                // 3. Cambiar de asiento (swap)
+                const matchCambioAsiento = texto.match(/cambia de asiento a (.+) del (\d+) por el asiento (\d+)/);
+                if (matchCambioAsiento) return { intent: 'cambiar_asiento', nombre: matchCambioAsiento[1].trim(), de: parseInt(matchCambioAsiento[2]), a: parseInt(matchCambioAsiento[3]) };
+                
+                // 4. Cambiar estado de pago
+                const matchCambioPago = texto.match(/pon como (pagado|con depósito|sin pagar) a (.+)/);
+                if (matchCambioPago) return { intent: 'cambiar_pago', estado: matchCambioPago[1].trim(), nombre: matchCambioPago[2].trim() };
+                
+                // 5. Asignar a lista de espera
+                const matchLista = texto.match(/añade a (.+) a la lista de espera/);
+                if (matchLista) return { intent: 'lista_espera', nombres: [matchLista[1].trim()] };
+                
+                // 6. Asignar a habitación por tipo
+                const matchHabitacion = texto.match(/asigna a (.+) a la habitación (.+)/);
+                if (matchHabitacion) return { intent: 'asignar_habitacion_directa', nombres: [matchHabitacion[1].trim()], roomId: matchHabitacion[2].trim() };
+                
+                // 7. Quitar de habitación
+                const matchQuitarHabitacion = texto.match(/quita de la habitación a (.+)/);
+                if (matchQuitarHabitacion) return { intent: 'quitar_de_habitacion', nombre: matchQuitarHabitacion[1].trim() };
+
+                return null;
+            }
+
+            function ejecutarComando(cmd) {
+                if (cmd.intent === 'lista_espera') {
+                    cmd.nombres.forEach(nombre => {
+                        const pasajero = crearPasajero(nombre, null, null, true, 'unpaid');
+                        passengersData.push(pasajero);
+                    });
+                }
+                
+                if (cmd.intent === 'asignar_asiento') {
+                    const pasajero = pasajerosData.find(p => p.name.toLowerCase().includes(cmd.nombre.toLowerCase()));
+                    const asientoOcupado = passengersData.find(p => p.assignedSeatNumber === cmd.asiento);
+                    if (!pasajero) {
+                        showCustomConfirm('Error', `No se encontró un pasajero con el nombre "${cmd.nombre}".`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    if (asientoOcupado) {
+                         showCustomConfirm('Error', `El asiento ${cmd.asiento} ya está ocupado por ${asientoOcupado.name}.`, () => {}, 'Aceptar');
+                         return;
+                    }
+                    pasajero.assignedSeatNumber = cmd.asiento;
+                    pasajero.onWaitlist = false;
+                }
+                
+                if (cmd.intent === 'desocupar_asiento') {
+                    const pasajero = pasajerosData.find(p => p.assignedSeatNumber === cmd.asiento);
+                    if (pasajero) {
+                        pasajero.assignedSeatNumber = null;
+                        pasajero.onWaitlist = false;
+                    } else {
+                        showCustomConfirm('Error', `El asiento ${cmd.asiento} ya está vacío.`, () => {}, 'Aceptar');
+                        return;
+                    }
+                }
+                
+                if (cmd.intent === 'cambiar_asiento') {
+                    const p1 = passengersData.find(p => p.name.toLowerCase().includes(cmd.nombre.toLowerCase()));
+                    const p2 = passengersData.find(p => p.assignedSeatNumber === cmd.a);
+                    if (!p1) {
+                        showCustomConfirm('Error', `No se encontró al pasajero llamado "${cmd.nombre}".`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    if (p1.assignedSeatNumber !== cmd.de) {
+                         showCustomConfirm('Error', `${p1.name} no está en el asiento ${cmd.de}.`, () => {}, 'Aceptar');
+                         return;
+                    }
+                    if (p2) {
+                        p1.assignedSeatNumber = cmd.a;
+                        p2.assignedSeatNumber = cmd.de;
+                    } else {
+                        p1.assignedSeatNumber = cmd.a;
+                    }
+                }
+                
+                if (cmd.intent === 'cambiar_pago') {
+                    const pasajero = passengersData.find(p => p.name.toLowerCase().includes(cmd.nombre.toLowerCase()));
+                    if (!pasajero) {
+                        showCustomConfirm('Error', `No se encontró un pasajero con el nombre "${cmd.nombre}".`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    let paymentStatus = 'unpaid';
+                    if (cmd.estado === 'pagado') paymentStatus = 'paid';
+                    if (cmd.estado === 'con depósito') paymentStatus = 'deposit';
+                    pasajero.paymentStatus = paymentStatus;
+                }
+                
+                if (cmd.intent === 'asignar_habitacion_directa') {
+                    const pasajero = passengersData.find(p => p.name.toLowerCase().includes(cmd.nombres[0].toLowerCase()));
+                    const habitacion = roomsData[cmd.roomId.toUpperCase()];
+                    if (!pasajero) {
+                        showCustomConfirm('Error', `No se encontró un pasajero con el nombre "${cmd.nombres[0]}".`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    if (!habitacion) {
+                        showCustomConfirm('Error', `No se encontró la habitación "${cmd.roomId.toUpperCase()}".`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    assignGuestToRoom(pasajero.id, habitacion.id);
+                }
+                
+                if (cmd.intent === 'quitar_de_habitacion') {
+                    const pasajero = passengersData.find(p => p.name.toLowerCase().includes(cmd.nombre.toLowerCase()));
+                    if (!pasajero) {
+                        showCustomConfirm('Error', `No se encontró un pasajero con el nombre "${cmd.nombre}".`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    if (!pasajero.assignedRoomNumber) {
+                        showCustomConfirm('Error', `${pasajero.name} no tiene una habitación asignada.`, () => {}, 'Aceptar');
+                        return;
+                    }
+                    unassignGuestFromRoom(pasajero.id);
+                }
+
+                saveData();
+                renderAll();
+            }
+
+            function crearPasajero(nombre, asiento = null, tipoHabitacion = null, enEspera = false, estadoPago = 'unpaid') {
+                return {
+                    id: 'p' + nextPassengerId++,
+                    name: nombre,
+                    type: 'Adulto',
+                    paymentStatus: estadoPago,
+                    assignedSeatNumber: asiento,
+                    assignedRoomType: tipoHabitacion,
+                    assignedRoomNumber: null,
+                    onWaitlist: enEspera
+                };
+            }
+
+            loadData();
+            renderAll();
+            showContent('seat-map');
+        });
+    </script>
+</body>
+</html>
